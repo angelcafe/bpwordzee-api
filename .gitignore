@@ -1,0 +1,66 @@
+# Dependencias
+/vendor/
+composer.phar
+composer.lock
+
+# Base de datos SQLite
+*.sqlite
+*.sqlite3
+*.db
+
+# Archivos de log
+*.log
+logs/
+
+# Variables de entorno y configuración sensible
+.env
+.env.local
+.env.*.local
+config.local.php
+
+# IDEs y editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Sistema operativo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Archivos temporales
+*.tmp
+*.temp
+/tmp/
+/temp/
+
+# Backups
+*.backup
+*.bak
+*.old
+
+# Node modules (si se usa npm para frontend)
+node_modules/
+package-lock.json
+
+# Scripts específicos de desarrollo local
+sync-to-wsl.ps1
+*.ps1
+
+# Archivos de testing
+/tests/coverage/
+phpunit.xml
+.phpunit.result.cache

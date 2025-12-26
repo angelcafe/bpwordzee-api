@@ -1,0 +1,17 @@
+{
+    "name": "wordzee/api",
+    "description": "API RESTful de alto rendimiento para búsqueda de palabras en Wordzee",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.4",
+        "slim/slim": "4.*",
+        "slim/psr7": "^1.8"
+    },
+    "require-dev": {},
+    "autoload": {
+        "psr-4": {
+            "BpWordzee\\": "clases/"
+        }
+    }
+}

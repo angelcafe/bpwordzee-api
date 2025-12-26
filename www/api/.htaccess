@@ -1,0 +1,24 @@
+RewriteEngine On
+
+# Permitir archivos estáticos directamente (HTML, JS, CSS, YAML, imágenes)
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteCond %{REQUEST_URI} \.(html|js|css|yaml|yml|png|jpg|jpeg|gif|svg|ico)$ [NC]
+RewriteRule ^ - [L]
+
+# Redirigir todo lo demás al index.php si no es un archivo o directorio existente
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
+
+# Bloquear acceso a archivos sensibles
+<FilesMatch "\.(env|json|lock|md|yml|log)$">
+    Require all denied
+</FilesMatch>
+
+# Evitar listado de directorios
+Options -Indexes
+
+# Headers básicos de seguridad
+Header set X-Content-Type-Options "nosniff"
+Header set X-Frame-Options "DENY"
+Header set X-XSS-Protection "1; mode=block"

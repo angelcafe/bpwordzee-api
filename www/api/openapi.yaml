@@ -1,0 +1,331 @@
+openapi: 3.0.3
+info:
+  title: ACF - API
+  description: |
+    API para búsqueda de palabras válidas en Wordzee.
+    
+    **Arquitectura Cliente-Servidor:**
+    - El servidor devuelve las palabras que coinciden con las letras disponibles
+    - El cliente JavaScript calcula puntos, aplica bonificadores y ordena resultados
+    - Ver [wordzee-client.js](wordzee-client.js) para uso del cliente
+    - Ver [ejemplo.html](ejemplo.html) para una demo interactiva
+  version: "2.0.0"
+  contact:
+    name: Angel Castro
+    url: https://angelcastro.es
+
+servers:
+  - url: https://acf.alwaysdata.net/api
+    description: Servidor de producción
+
+paths:
+  /bpwordzee:
+    get:
+      summary: Buscar palabras coincidentes
+      description: |
+        Devuelve todas las palabras que se pueden formar con las letras disponibles.
+        
+        **Nota:** Los cálculos de puntuación se realizan en el cliente usando `BpWordzeeClient.buscarPalabras()`.
+        El servidor solo filtra las palabras válidas para optimizar el rendimiento.
+      tags:
+        - Búsqueda
+      parameters:
+        - name: letras
+          in: query
+          required: true
+          description: Letras disponibles separadas por comas (exactamente 7 letras)
+          schema:
+            type: string
+            pattern: '^[A-ZÑ],[A-ZÑ],[A-ZÑ],[A-ZÑ],[A-ZÑ],[A-ZÑ],[A-ZÑ]$'
+          example: "A,R,B,O,L,E,S"
+      responses:
+        '200':
+          description: Palabras encontradas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      palabras:
+                        type: array
+                        items:
+                          type: string
+                        description: Array de palabras válidas
+                        example: ["ARBOL", "LABRO", "ROBLE", "BORLA", "LABOR"]
+                      total:
+                        type: integer
+                        description: Total de palabras encontradas
+                        example: 42
+              examples:
+                ejemplo_exitoso:
+                  summary: Respuesta exitosa
+                  value:
+                    success: true
+                    data:
+                      palabras: ["ARBOLES", "ROBLES", "ARBOL", "LABRO", "ROBLE", "BORLA", "LABOR", "ORAL", "RALO", "LOBA"]
+                      total: 42
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                faltan_parametros:
+                  summary: Falta parámetro letras
+                  value:
+                    success: false
+                    mensaje: 'Falta el parámetro "letras"'
+                letras_invalidas:
+                  summary: Número incorrecto de letras
+                  value:
+                    success: false
+                    mensaje: "El array de letras disponibles debe tener exactamente 7 letras."
+
+  /palabras:
+    post:
+      summary: Crear nueva palabra
+      description: Añade una nueva palabra a la base de datos (requiere autenticación)
+      tags:
+        - Administración
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - palabra
+              properties:
+                palabra:
+                  type: string
+                  minLength: 3
+                  maxLength: 7
+                  description: Palabra a crear (será convertida a mayúsculas)
+                  example: "NUEVA"
+          application/json:
+            schema:
+              type: object
+              required:
+                - palabra
+              properties:
+                palabra:
+                  type: string
+                  minLength: 3
+                  maxLength: 7
+                  description: Palabra a crear (será convertida a mayúsculas)
+                  example: "NUEVA"
+      responses:
+        '200':
+          description: Palabra creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      mensaje:
+                        type: string
+                        example: "Palabra creada"
+                      palabra:
+                        type: string
+                        example: "NUEVA"
+        '400':
+          description: Error en la validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                palabra_existe:
+                  summary: La palabra ya existe
+                  value:
+                    success: false
+                    mensaje: "La palabra ya existe"
+                longitud_invalida:
+                  summary: Longitud inválida
+                  value:
+                    success: false
+                    mensaje: "La palabra debe tener entre 3 y 7 letras"
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                no_autorizado:
+                  summary: API Key inválida
+                  value:
+                    success: false
+                    mensaje: "No autorizado"
+
+  /palabras/{palabra}:
+    put:
+      summary: Actualizar palabra existente
+      description: Modifica una palabra en la base de datos (requiere autenticación)
+      tags:
+        - Administración
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: palabra
+          in: path
+          required: true
+          description: Palabra a actualizar
+          schema:
+            type: string
+          example: "VIEJA"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - palabra_nueva
+              properties:
+                palabra_nueva:
+                  type: string
+                  minLength: 3
+                  maxLength: 7
+                  description: Nueva palabra (será convertida a mayúsculas)
+                  example: "NUEVA"
+          application/json:
+            schema:
+              type: object
+              required:
+                - palabra_nueva
+              properties:
+                palabra_nueva:
+                  type: string
+                  minLength: 3
+                  maxLength: 7
+                  description: Nueva palabra (será convertida a mayúsculas)
+                  example: "NUEVA"
+      responses:
+        '200':
+          description: Palabra actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      mensaje:
+                        type: string
+                        example: "Palabra actualizada"
+                      palabra_antigua:
+                        type: string
+                        example: "VIEJA"
+                      palabra_nueva:
+                        type: string
+                        example: "NUEVA"
+        '400':
+          description: Error en la validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Eliminar palabra
+      description: Elimina una palabra de la base de datos (requiere autenticación)
+      tags:
+        - Administración
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: palabra
+          in: path
+          required: true
+          description: Palabra a eliminar
+          schema:
+            type: string
+          example: "ELIMINAR"
+      responses:
+        '200':
+          description: Palabra eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      mensaje:
+                        type: string
+                        example: "Palabra eliminada"
+                      palabra:
+                        type: string
+                        example: "ELIMINAR"
+        '400':
+          description: Error - la palabra no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API Key para endpoints administrativos
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        mensaje:
+          type: string
+          description: Mensaje de error descriptivo
+          example: "Parámetros inválidos"
+
+tags:
+  - name: Búsqueda
+    description: |
+      Endpoints públicos para búsqueda de palabras.
+      
+      **Uso recomendado:** Utiliza el cliente JavaScript `BpWordzeeClient` para obtener 
+      resultados con puntuaciones calculadas y ordenados automáticamente.
+  - name: Administración
+    description: Endpoints privados para gestión de base de datos (requieren API Key en header `X-API-Key`)
