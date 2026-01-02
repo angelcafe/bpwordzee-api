@@ -1,0 +1,629 @@
+openapi: 3.0.3
+info:
+  title: ACF - API's
+  description: |
+    Colección de APIs para las aplicaciones desarrolladas por Ángel Castro.
+    
+    Este documento centraliza la documentación de todas las APIs disponibles,
+    facilitando la integración y el uso de los diferentes servicios.
+    
+    **Aplicaciones disponibles:**
+    - **BpWordzee** - Búsqueda optimizada de palabras válidas para el juego Wordzee
+    - *(Más aplicaciones próximamente...)*
+    
+    **Características generales:**
+    - APIs RESTful con formato JSON
+    - Endpoints públicos y privados con autenticación API Key
+    - Soporte CORS para orígenes permitidos
+    - Sistema de caché inteligente
+    - Documentación completa con ejemplos
+    
+    **CORS:**
+    - Orígenes permitidos: `https://angelcastro.es`, `http://127.0.0.1`
+    - Peticiones directas (curl, Postman) no están afectadas por CORS
+  version: "1.0.0"
+  contact:
+    name: Angel Castro
+    url: https://angelcastro.es
+  license:
+    name: MIT
+
+servers:
+  - url: https://acf.alwaysdata.net/api
+    description: Servidor de producción
+
+paths:
+  /health:
+    get:
+      summary: Health Check
+      description: |
+        Endpoint de monitorización del estado del servicio y sus dependencias.
+        
+        **Uso principal:**
+        - Load balancers (verificar disponibilidad)
+        - Contenedores Docker/Kubernetes (health checks)
+        - Sistemas de monitoreo (alertas automáticas)
+        - CI/CD pipelines (smoke tests)
+        
+        **Checks realizados:**
+        - ✅ Base de datos SQLite (conectividad y timestamp)
+        - ✅ Memoria PHP (uso actual vs límite)
+        - ✅ Versión y SAPI de PHP
+        
+        **Códigos de respuesta:**
+        - `200 OK` - Servicio saludable
+        - `503 Service Unavailable` - Servicio con problemas
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: Servicio saludable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded]
+                    description: Estado general del servicio
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: Timestamp ISO 8601
+                  service:
+                    type: string
+                    example: BpWordzee API
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  response_time_ms:
+                    type: number
+                    format: float
+                    description: Tiempo de respuesta del health check en milisegundos
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            enum: [ok, error]
+                          message:
+                            type: string
+                      memory:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            enum: [ok, warning]
+                          usage:
+                            type: string
+                            example: "4 MB"
+                          limit:
+                            type: string
+                            example: "128M"
+                          percent:
+                            type: string
+                            example: "3.13%"
+                      php:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            enum: [ok]
+                          version:
+                            type: string
+                            example: "8.4.16"
+                          sapi:
+                            type: string
+                            example: "apache2handler"
+              example:
+                status: healthy
+                timestamp: "2026-01-02T16:00:50+01:00"
+                service: BpWordzee API
+                version: "1.0.0"
+                response_time_ms: 0.1
+                checks:
+                  database:
+                    status: ok
+                    message: SQLite accessible
+                  memory:
+                    status: ok
+                    usage: "4 MB"
+                    limit: "128M"
+                    percent: "3.13%"
+                  php:
+                    status: ok
+                    version: "8.4.16"
+                    sapi: apache2handler
+        '503':
+          description: Servicio no saludable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [unhealthy]
+                  timestamp:
+                    type: string
+                    format: date-time
+                  service:
+                    type: string
+                  version:
+                    type: string
+                  response_time_ms:
+                    type: number
+                  checks:
+                    type: object
+              example:
+                status: unhealthy
+                timestamp: "2026-01-02T16:00:50+01:00"
+                service: BpWordzee API
+                version: "1.0.0"
+                response_time_ms: 0.5
+                checks:
+                  database:
+                    status: error
+                    message: "Failed to connect to database"
+                  memory:
+                    status: ok
+                    usage: "4 MB"
+                    limit: "128M"
+                    percent: "3.13%"
+                  php:
+                    status: ok
+                    version: "8.4.16"
+                    sapi: apache2handler
+
+  /bpwordzee:
+    get:
+      summary: Buscar palabras válidas
+      description: |
+        **[BpWordzee]** Encuentra todas las palabras que se pueden formar con las 7 letras disponibles.
+        
+        **Funcionamiento:**
+        - Envía las 7 letras separadas por comas en el parámetro `letras`
+        - El servidor valida y devuelve un array con todas las palabras válidas
+        - Las palabras tienen entre 3 y 7 letras de longitud
+        
+        **Nota:** Los cálculos de puntuación se realizan en el cliente usando `BpWordzeeClient.buscarPalabras()`.
+        El servidor solo filtra las palabras válidas para optimizar el rendimiento.
+        
+        **Ejemplo de uso:**
+        ```
+        GET /bpwordzee?letras=A,R,B,O,L,E,S
+        ```
+      tags:
+        - BpWordzee
+      parameters:
+        - name: letras
+          in: query
+          required: true
+          description: Letras disponibles separadas por comas (exactamente 7 letras)
+          schema:
+            type: string
+            pattern: '^[A-ZÑ],[A-ZÑ],[A-ZÑ],[A-ZÑ],[A-ZÑ],[A-ZÑ],[A-ZÑ]$'
+          example: "A,R,B,O,L,E,S"
+      responses:
+        '200':
+          description: Palabras encontradas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      palabras:
+                        type: array
+                        items:
+                          type: string
+                        description: Array de palabras válidas
+                        example: ["ARBOL", "LABRO", "ROBLE", "BORLA", "LABOR"]
+                      total:
+                        type: integer
+                        description: Total de palabras encontradas
+                        example: 42
+              examples:
+                ejemplo_exitoso:
+                  summary: Respuesta exitosa
+                  value:
+                    success: true
+                    data:
+                      palabras: ["ARBOLES", "ROBLES", "ARBOL", "LABRO", "ROBLE", "BORLA", "LABOR", "ORAL", "RALO", "LOBA"]
+                      total: 42
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                faltan_parametros:
+                  summary: Falta parámetro letras
+                  value:
+                    success: false
+                    mensaje: 'Falta el parámetro "letras"'
+                letras_invalidas:
+                  summary: Número incorrecto de letras
+                  value:
+                    success: false
+                    mensaje: "El array de letras disponibles debe tener exactamente 7 letras."
+
+  /bpwordzee/modificacion:
+    get:
+      summary: Obtener timestamp de última modificación
+      description: |
+        **[BpWordzee]** Devuelve el timestamp Unix de la última modificación de la base de datos de palabras.
+        
+        **Uso:**
+        - Útil para implementar caché inteligente en el cliente
+        - Compara el timestamp con el valor cacheado
+        - Si son diferentes, actualiza el caché con nuevas palabras
+        - Evita descargas innecesarias y optimiza el rendimiento
+        
+        **Ejemplo de implementación de caché:**
+        ```javascript
+        const timestampLocal = localStorage.getItem('bpwordzee_timestamp');
+        const response = await fetch('/api/bpwordzee/modificacion');
+        const { data } = await response.json();
+        
+        if (timestampLocal !== data.timestamp.toString()) {
+          // Actualizar caché
+          localStorage.setItem('bpwordzee_timestamp', data.timestamp);
+        }
+        ```
+      tags:
+        - BpWordzee
+      responses:
+        '200':
+          description: Timestamp obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      timestamp:
+                        type: integer
+                        description: Timestamp Unix de última modificación
+                        example: 1767088612
+              examples:
+                ejemplo_exitoso:
+                  summary: Respuesta exitosa
+                  value:
+                    success: true
+                    data:
+                      timestamp: 1767088612
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /bpwordzee/palabras:
+    post:
+      summary: Crear nueva palabra
+      description: |
+        **[BpWordzee - Admin]** Añade una nueva palabra a la base de datos de BpWordzee (requiere autenticación).
+        
+        **Validaciones:**
+        - La palabra debe tener entre 3 y 7 letras
+        - Se convierte automáticamente a mayúsculas
+        - No puede existir previamente en la base de datos
+        
+        **Autenticación:**
+        - Requiere header `X-API-Key` con la API Key válida
+        - La API Key cambia automáticamente cada mes
+        
+        **Ejemplo:**
+        ```bash
+        curl -X POST https://acf.alwaysdata.net/api/bpwordzee/palabras \
+          -H "X-API-Key: tu_api_key" \
+          -H "Content-Type: application/json" \
+          -d '{"palabra": "NUEVA"}'
+        ```
+      tags:
+        - BpWordzee
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - palabra
+              properties:
+                palabra:
+                  type: string
+                  minLength: 3
+                  maxLength: 7
+                  description: Palabra a crear (será convertida a mayúsculas)
+                  example: "NUEVA"
+          application/json:
+            schema:
+              type: object
+              required:
+                - palabra
+              properties:
+                palabra:
+                  type: string
+                  minLength: 3
+                  maxLength: 7
+                  description: Palabra a crear (será convertida a mayúsculas)
+                  example: "NUEVA"
+      responses:
+        '200':
+          description: Palabra creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      mensaje:
+                        type: string
+                        example: "Palabra creada"
+                      palabra:
+                        type: string
+                        example: "NUEVA"
+        '400':
+          description: Error en la validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                palabra_existe:
+                  summary: La palabra ya existe
+                  value:
+                    success: false
+                    mensaje: "La palabra ya existe"
+                longitud_invalida:
+                  summary: Longitud inválida
+                  value:
+                    success: false
+                    mensaje: "La palabra debe tener entre 3 y 7 letras"
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                no_autorizado:
+                  summary: API Key inválida
+                  value:
+                    success: false
+                    mensaje: "No autorizado"
+
+  /bpwordzee/palabras/{palabra}:
+    put:
+      summary: Actualizar palabra existente
+      description: |
+        **[BpWordzee - Admin]** Modifica una palabra en la base de datos de BpWordzee (requiere autenticación).
+        
+        **Funcionamiento:**
+        - Reemplaza una palabra antigua por una nueva
+        - La palabra antigua debe existir en la base de datos
+        - La palabra nueva debe tener entre 3 y 7 letras
+        - Ambas palabras se convierten automáticamente a mayúsculas
+        
+        **Ejemplo:**
+        ```bash
+        curl -X PUT https://acf.alwaysdata.net/api/bpwordzee/palabras/VIEJA \
+          -H "X-API-Key: tu_api_key" \
+          -H "Content-Type: application/json" \
+          -d '{"palabra_nueva": "NUEVA"}'
+        ```
+      tags:
+        - BpWordzee
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: palabra
+          in: path
+          required: true
+          description: Palabra a actualizar
+          schema:
+            type: string
+          example: "VIEJA"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - palabra_nueva
+              properties:
+                palabra_nueva:
+                  type: string
+                  minLength: 3
+                  maxLength: 7
+                  description: Nueva palabra (será convertida a mayúsculas)
+                  example: "NUEVA"
+          application/json:
+            schema:
+              type: object
+              required:
+                - palabra_nueva
+              properties:
+                palabra_nueva:
+                  type: string
+                  minLength: 3
+                  maxLength: 7
+                  description: Nueva palabra (será convertida a mayúsculas)
+                  example: "NUEVA"
+      responses:
+        '200':
+          description: Palabra actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      mensaje:
+                        type: string
+                        example: "Palabra actualizada"
+                      palabra_antigua:
+                        type: string
+                        example: "VIEJA"
+                      palabra_nueva:
+                        type: string
+                        example: "NUEVA"
+        '400':
+          description: Error en la validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Eliminar palabra
+      description: |
+        **[BpWordzee - Admin]** Elimina una palabra de la base de datos de BpWordzee (requiere autenticación).
+        
+        **Validaciones:**
+        - La palabra debe existir en la base de datos
+        - Se convierte automáticamente a mayúsculas antes de eliminar
+        - La eliminación es permanente
+        
+        **Ejemplo:**
+        ```bash
+        curl -X DELETE https://acf.alwaysdata.net/api/bpwordzee/palabras/ELIMINAR \
+          -H "X-API-Key: tu_api_key"
+        ```
+      tags:
+        - BpWordzee
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: palabra
+          in: path
+          required: true
+          description: Palabra a eliminar
+          schema:
+            type: string
+          example: "ELIMINAR"
+      responses:
+        '200':
+          description: Palabra eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      mensaje:
+                        type: string
+                        example: "Palabra eliminada"
+                      palabra:
+                        type: string
+                        example: "ELIMINAR"
+        '400':
+          description: Error - la palabra no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API Key para endpoints administrativos (aplica a todas las aplicaciones).
+        
+        **Seguridad:**
+        - La API Key es dinámica y cambia automáticamente cada mes
+        - Formato: prefijo fijo + hash SHA256 del mes actual
+        - Solo necesaria para operaciones de administración (POST, PUT, DELETE)
+        - Los endpoints de consulta (GET) son públicos
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        mensaje:
+          type: string
+          description: Mensaje de error descriptivo
+          example: "Parámetros inválidos"
+
+tags:
+  - name: BpWordzee
+    description: |
+      **Aplicación de búsqueda de palabras para el juego Wordzee**
+      
+      BpWordzee es una herramienta que ayuda a encontrar todas las palabras válidas
+      que se pueden formar con un conjunto de 7 letras disponibles.
+      
+      **Características:**
+      - Base de datos SQLite con palabras en español
+      - Búsqueda optimizada de palabras válidas (3-7 letras)
+      - API RESTful con endpoints públicos y privados
+      - Sistema de caché inteligente con timestamp de modificación
+      - Arquitectura cliente-servidor para cálculo eficiente de puntuaciones
+      
+      **Endpoints públicos (sin autenticación):**
+      - `GET /bpwordzee` - Buscar palabras válidas con las letras dadas
+      - `GET /bpwordzee/modificacion` - Obtener timestamp de última modificación
+      
+      **Endpoints administrativos (requieren API Key):**
+      - `POST /bpwordzee/palabras` - Crear nueva palabra
+      - `PUT /bpwordzee/palabras/{palabra}` - Actualizar palabra existente
+      - `DELETE /bpwordzee/palabras/{palabra}` - Eliminar palabra
+      
+      **Uso recomendado:**
+      Utiliza el cliente JavaScript `BpWordzeeClient` para obtener resultados
+      con puntuaciones calculadas y ordenados automáticamente. El servidor solo
+      filtra las palabras válidas para optimizar el rendimiento.

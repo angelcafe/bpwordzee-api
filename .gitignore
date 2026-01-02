@@ -1,0 +1,33 @@
+# BpWordzee API - .gitignore
+# PHP 8.4 + Slim + SQLite + Docker
+
+# Dependencias PHP
+/vendor/
+composer.lock
+
+# PHPUnit
+.phpunit.cache/
+.phpunit.result.cache
+coverage/
+coverage.xml
+phpunit.xml.dist
+
+# PHP CS Fixer
+.php-cs-fixer.cache
+.php-cs-fixer.php.cache
+
+# PHPStan
+phpstan.neon.cache
+.phpstan/
+
+# IDE - Visual Studio Code (configuración personal)
+.vscode
+.history
+
+# Documentación personal (no pública)
+/docs-local/
+
+# Archivos de entorno y locales
+*.ps1
+*.sqlite
+*.backup

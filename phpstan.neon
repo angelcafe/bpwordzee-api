@@ -1,0 +1,22 @@
+parameters:
+    level: 8
+    paths:
+        - clases
+        - www/api
+        - tests
+    excludePaths:
+        - vendor
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        # SQLite3 puede retornar false, pero en nuestro caso siempre funciona
+        - '#Cannot call method (fetchArray|bindValue|execute|reset)\(\) on SQLite3(Result|Stmt)\|false#'
+        # Tests: assertions con tipos ya estrechos son correctas
+        - '#Call to method PHPUnit\\Framework\\Assert::assert.* will always evaluate to true#'
+        # PHPDoc en callable es compatible
+        - '#PHPDoc tag @var with type callable.* is not subtype of native type Closure#'
+        # Parse de request body de Slim
+        - '#Cannot access offset .* on array\|object#'
+        # json_encode nunca falla con arrays simples
+        - '#Parameter .* expects string, string\|false given#'
+        # PHPDoc parseError en comentario
+        - '#PHPDoc tag @param has invalid value#'

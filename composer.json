@@ -1,0 +1,64 @@
+{
+    "name": "wordzee/api",
+    "description": "API RESTful de alto rendimiento para búsqueda de palabras en Wordzee",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Angel Castro",
+            "email": "angelcafn@gmail.com",
+            "homepage": "https://angelcastro.es",
+            "role": "Developer"
+        }
+    ],
+    "keywords": [
+        "api",
+        "rest",
+        "wordzee",
+        "php",
+        "slim",
+        "sqlite",
+        "performance"
+    ],
+    "require": {
+        "php": ">=8.3",
+        "slim/slim": "4.*",
+        "slim/psr7": "^1.8"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5",
+        "phpstan/phpstan": "^2.0",
+        "friendsofphp/php-cs-fixer": "^3.64"
+    },
+    "autoload": {
+        "psr-4": {
+            "BpWordzee\\": "clases/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:coverage": "phpunit --coverage-html coverage",
+        "phpstan": "phpstan analyse",
+        "cs:check": "php-cs-fixer fix --dry-run --diff",
+        "cs:fix": "php-cs-fixer fix",
+        "quality": [
+            "@phpstan",
+            "@cs:check",
+            "@test"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
