@@ -61,7 +61,6 @@ public static function buscarPalabras(array $letras_disponibles): array
     if (count($letras_disponibles) !== self::REQUIRED_LETTERS) {
         throw new InvalidArgumentException('Requeridas 7 letras exactamente.');
     }
-    // Algoritmo O(n) optimizado...
 }
 ```
 
@@ -74,7 +73,6 @@ public static function buscarPalabras(array $letras_disponibles): array
 
 ### ⚡ Alto Rendimiento
 - **< 100ms** tiempo de respuesta promedio
-- **O(n)** complejidad del algoritmo de búsqueda
 - **+500 req/s** capacidad de throughput
 - Índices DB optimizados, sin ORM pesado
 
@@ -168,7 +166,6 @@ curl https://acf.alwaysdata.net/api/health
 
 ### Database & Performance
 ✅ Optimización SQL con índices  
-✅ Algoritmos eficientes (O(n))  
 ✅ Caché strategies (ETag, Cache-Control)
 
 ### Security
@@ -196,7 +193,6 @@ curl https://acf.alwaysdata.net/api/health
 | Tiempo de respuesta | < 100ms promedio |
 | Throughput | 500+ req/s |
 | Palabras indexadas | +50,000 |
-| Complejidad algoritmo | O(n) |
 | Tests passing | 17/17 ✅ |
 | PHPStan errors | 0 ✅ |
 
